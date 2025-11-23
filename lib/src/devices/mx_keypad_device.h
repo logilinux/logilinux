@@ -30,6 +30,14 @@ public:
   bool initialize();
   bool hasLCD() const;
 
+  // GIF support
+  bool setKeyGif(int keyIndex, const std::vector<uint8_t> &gifData,
+                 bool loop = true);
+  bool setKeyGifFromFile(int keyIndex, const std::string &gifPath,
+                         bool loop = true);
+  void stopKeyAnimation(int keyIndex);
+  void stopAllAnimations();
+
 private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

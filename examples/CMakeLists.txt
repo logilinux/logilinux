@@ -8,3 +8,7 @@ target_link_libraries(volume-example PRIVATE logilinux)
 
 add_executable(mx-keypad-example mx-keypad-example.cpp)
 target_link_libraries(mx-keypad-example PRIVATE logilinux)
+
+add_executable(gif-test gif-test.cpp)
+target_link_libraries(gif-test PRIVATE logilinux)
+
