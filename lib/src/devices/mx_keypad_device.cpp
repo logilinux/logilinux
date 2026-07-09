@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cerrno>
 #include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <iostream>
 #include <linux/hidraw.h>
@@ -13,12 +14,66 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <thread>
+#include <utility>
 #include <unistd.h>
 
 namespace LogiLinux {
 
 constexpr size_t MAX_PACKET_SIZE = 4095;
 constexpr size_t LCD_SIZE = 118;
+
+namespace {
+
+std::vector<std::string> listHidrawPaths() {
+  std::vector<std::pair<int, std::string>> indexed_paths;
+
+  DIR *dir = opendir("/dev");
+  if (!dir) {
+    return {};
+  }
+
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != nullptr) {
+    std::string name = entry->d_name;
+    constexpr char prefix[] = "hidraw";
+    constexpr size_t prefix_len = sizeof(prefix) - 1;
+
+    if (name.compare(0, prefix_len, prefix) != 0 || name.size() == prefix_len) {
+      continue;
+    }
+
+    int index = 0;
+    bool valid = true;
+    for (size_t i = prefix_len; i < name.size(); ++i) {
+      char ch = name[i];
+      if (ch < '0' || ch > '9') {
+        valid = false;
+        break;
+      }
+      index = (index * 10) + (ch - '0');
+    }
+
+    if (valid) {
+      indexed_paths.emplace_back(index, "/dev/" + name);
+    }
+  }
+  closedir(dir);
+
+  std::sort(indexed_paths.begin(), indexed_paths.end(),
+            [](const auto &left, const auto &right) {
+              return left.first < right.first;
+            });
+
+  std::vector<std::string> paths;
+  paths.reserve(indexed_paths.size());
+  for (const auto &entry : indexed_paths) {
+    paths.push_back(entry.second);
+  }
+
+  return paths;
+}
+
+} // namespace
 
 // Uber-optimization: Pre-computed packet headers for zero-copy assembly
 alignas(64) static const uint8_t PACKET_BASE_HEADER[4] = {0x14, 0xff, 0x02, 0x2b};
@@ -261,10 +316,8 @@ struct MXKeypadDevice::Impl {
       return "";
     }
 
-    // Try to find corresponding hidraw device
-    // This is a simplified approach - in production would use udev
-    for (int i = 0; i < 20; i++) {
-      std::string hidraw = "/dev/hidraw" + std::to_string(i);
+    // Try to find corresponding hidraw device.
+    for (const auto &hidraw : listHidrawPaths()) {
       int fd = open(hidraw.c_str(), O_RDWR | O_NONBLOCK);
       if (fd >= 0) {
         struct hidraw_devinfo info;
@@ -354,11 +407,26 @@ void MXKeypadDevice::startMonitoring() {
         continue; // Timeout, check if still monitoring
       }
 
+      if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+        break;
+      }
+
       if (!(pfd.revents & POLLIN)) {
         continue; // No data available
       }
 
       int bytes_read = read(fd, report.data(), report.size());
+
+      if (bytes_read == 0) {
+        break;
+      }
+
+      if (bytes_read < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          continue;
+        }
+        break;
+      }
 
       // P1/P2 navigation button detection - CHECK THIS FIRST
       // Format: 11 ff 0b 00 01 a1/a2 (press) or 11 ff 0b 00 00 00 (release)
@@ -475,10 +543,6 @@ void MXKeypadDevice::startMonitoring() {
           impl_->pressed_buttons = current_pressed;
         }
       }
-
-      if (bytes_read < 0 && errno != EAGAIN) {
-        break;
-      }
     }
 
     close(fd);
@@ -489,9 +553,9 @@ void MXKeypadDevice::startMonitoring() {
 void MXKeypadDevice::stopMonitoring() {
   if (impl_->monitoring) {
     impl_->monitoring = false;
-    if (impl_->monitor_thread.joinable()) {
-      impl_->monitor_thread.join();
-    }
+  }
+  if (impl_->monitor_thread.joinable()) {
+    impl_->monitor_thread.join();
   }
 }
 

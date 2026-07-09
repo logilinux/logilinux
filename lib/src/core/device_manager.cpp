@@ -10,6 +10,7 @@
 #include <linux/hidraw.h>
 #include <linux/input.h>
 #include <sys/ioctl.h>
+#include <utility>
 #include <unistd.h>
 
 namespace LogiLinux {
@@ -18,6 +19,59 @@ constexpr uint16_t LOGITECH_VENDOR_ID = 0x046d;
 
 constexpr uint16_t MX_DIALPAD_PRODUCT_ID = 0xbc00;
 constexpr uint16_t MX_KEYPAD_PRODUCT_ID = 0xc354;
+
+namespace {
+
+std::vector<std::string> listHidrawPaths() {
+  std::vector<std::pair<int, std::string>> indexed_paths;
+
+  DIR *dir = opendir("/dev");
+  if (!dir) {
+    return {};
+  }
+
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != nullptr) {
+    std::string name = entry->d_name;
+    constexpr char prefix[] = "hidraw";
+    constexpr size_t prefix_len = sizeof(prefix) - 1;
+
+    if (name.compare(0, prefix_len, prefix) != 0 || name.size() == prefix_len) {
+      continue;
+    }
+
+    int index = 0;
+    bool valid = true;
+    for (size_t i = prefix_len; i < name.size(); ++i) {
+      char ch = name[i];
+      if (ch < '0' || ch > '9') {
+        valid = false;
+        break;
+      }
+      index = (index * 10) + (ch - '0');
+    }
+
+    if (valid) {
+      indexed_paths.emplace_back(index, "/dev/" + name);
+    }
+  }
+  closedir(dir);
+
+  std::sort(indexed_paths.begin(), indexed_paths.end(),
+            [](const auto &left, const auto &right) {
+              return left.first < right.first;
+            });
+
+  std::vector<std::string> paths;
+  paths.reserve(indexed_paths.size());
+  for (const auto &entry : indexed_paths) {
+    paths.push_back(entry.second);
+  }
+
+  return paths;
+}
+
+} // namespace
 
 DeviceManager::DeviceManager() {}
 
@@ -63,8 +117,7 @@ std::vector<DevicePtr> DeviceManager::scanDevices() {
   }
 
   // Also scan /dev/hidraw* devices for devices that don't have event interfaces
-  for (int i = 0; i < 20; i++) {
-    std::string hidraw_path = "/dev/hidraw" + std::to_string(i);
+  for (const auto &hidraw_path : listHidrawPaths()) {
     auto info = probeHidrawDevice(hidraw_path);
     if (info) {
       DevicePtr device;
