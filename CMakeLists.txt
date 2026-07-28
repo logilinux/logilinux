@@ -6,8 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads REQUIRED)
 
+include(CTest)
+
 add_subdirectory(lib)
 
 add_subdirectory(examples)
 
 add_subdirectory(tools)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

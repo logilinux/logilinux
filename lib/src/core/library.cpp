@@ -26,9 +26,10 @@ std::vector<DevicePtr> Library::discoverDevices() {
 }
 
 DevicePtr Library::findDevice(DeviceType type) {
-  if (pImpl->devices_.empty()) {
-    discoverDevices();
-  }
+  // Device nodes can change after an unplug or KVM switch.  Re-scan instead
+  // of returning a cached object whose file descriptors refer to the old
+  // connection.
+  discoverDevices();
 
   // For MX_KEYPAD, prefer hidraw devices over event devices
   // because the keypad needs hidraw for LCD control and initialization
@@ -61,9 +62,7 @@ DevicePtr Library::findDevice(DeviceType type) {
 }
 
 std::vector<DevicePtr> Library::findDevices(DeviceType type) {
-  if (pImpl->devices_.empty()) {
-    discoverDevices();
-  }
+  discoverDevices();
 
   std::vector<DevicePtr> result;
   for (const auto &device : pImpl->devices_) {

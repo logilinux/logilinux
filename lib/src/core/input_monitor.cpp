@@ -3,6 +3,7 @@
  */
 
 #include "input_monitor.h"
+#include <cerrno>
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
@@ -52,10 +53,6 @@ bool InputMonitor::grabDevice(bool grab) {
 }
 
 void InputMonitor::stop() {
-  if (!running_) {
-    return;
-  }
-
   should_stop_ = true;
 
   if (monitor_thread_.joinable()) {
@@ -88,14 +85,23 @@ void InputMonitor::monitorLoop() {
       continue;
     }
 
+    if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+      break;
+    }
+
     if (pfd.revents & POLLIN) {
       ssize_t bytes = read(device_fd_, &ev, sizeof(ev));
 
       if (bytes == sizeof(ev)) {
         processEvent(ev);
+      } else if (bytes == 0 ||
+                 (bytes < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+        break;
       }
     }
   }
+
+  running_ = false;
 }
 
 void InputMonitor::processEvent(const struct input_event &ev) {
