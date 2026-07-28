@@ -9,6 +9,7 @@
 #include <iostream>
 #include <linux/hidraw.h>
 #include <map>
+#include <mutex>
 #include <poll.h>
 #include <set>
 #include <sys/ioctl.h>
@@ -115,6 +116,7 @@ struct MXKeypadDevice::Impl {
   std::string hidraw_path;
   bool initialized = false;
   std::atomic<bool> monitoring = false;
+  std::mutex monitor_mutex;
   std::thread monitor_thread;
   std::set<uint8_t> pressed_buttons; // Track all currently pressed buttons
   uint8_t last_p_button = 0; // Track last pressed P1/P2 button (0xa1 or 0xa2)
@@ -371,8 +373,17 @@ void MXKeypadDevice::setEventCallback(EventCallback callback) {
 }
 
 void MXKeypadDevice::startMonitoring() {
+  std::lock_guard<std::mutex> lock(impl_->monitor_mutex);
+
   if (impl_->monitoring || !event_callback_) {
     return;
+  }
+
+  // A worker that ended after an unplug is still joinable. Reap it before
+  // assigning a replacement; assigning over a joinable std::thread calls
+  // std::terminate().
+  if (impl_->monitor_thread.joinable()) {
+    impl_->monitor_thread.join();
   }
 
   impl_->monitoring = true;
@@ -543,6 +554,7 @@ void MXKeypadDevice::startMonitoring() {
           impl_->pressed_buttons = current_pressed;
         }
       }
+
     }
 
     close(fd);
@@ -551,9 +563,8 @@ void MXKeypadDevice::startMonitoring() {
 }
 
 void MXKeypadDevice::stopMonitoring() {
-  if (impl_->monitoring) {
-    impl_->monitoring = false;
-  }
+  std::lock_guard<std::mutex> lock(impl_->monitor_mutex);
+  impl_->monitoring = false;
   if (impl_->monitor_thread.joinable()) {
     impl_->monitor_thread.join();
   }

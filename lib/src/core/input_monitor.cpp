@@ -94,7 +94,8 @@ void InputMonitor::monitorLoop() {
 
       if (bytes == sizeof(ev)) {
         processEvent(ev);
-      } else if (bytes == 0 || (bytes < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+      } else if (bytes == 0 ||
+                 (bytes < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
         break;
       }
     }
