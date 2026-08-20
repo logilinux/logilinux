@@ -59,8 +59,8 @@ set_target_properties(logilinux PROPERTIES
 
 # Installation rules
 install(TARGETS logilinux
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION bin
 )
 
@@ -78,5 +78,5 @@ configure_file(
 )
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/logilinux.pc
-    DESTINATION lib/pkgconfig
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
