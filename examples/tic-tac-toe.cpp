@@ -13,7 +13,10 @@
 
 
 std::atomic<bool> running(true);
-void signalHandler(int signal) { running = false; }
+void signalHandler(int signal) { 
+  /*unused*/ (void)signal; 
+  running = false; 
+}
 
 
 std::vector<uint8_t> generateColorJPEG(uint8_t r, uint8_t g, uint8_t b) {
