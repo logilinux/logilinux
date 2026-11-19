@@ -10,7 +10,10 @@
 
 std::atomic<bool> running(true);
 
-void signalHandler(int signal) { running = false; }
+void signalHandler(int signal) {
+  /*unused*/ (void)signal; 
+  running = false; 
+}
 
 const char *getEventCodeName(uint16_t code) {
   switch (code) {

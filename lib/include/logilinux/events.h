@@ -114,7 +114,7 @@ inline const char *getDialpadButtonName(DialpadButton button) {
 }
 
 inline MXKeypadButton getMXKeypadButton(uint32_t button_code) {
-  if (button_code >= 0 && button_code <= 8) {
+  if (button_code <= 8) {
     return static_cast<MXKeypadButton>(button_code);
   }
   switch (button_code) {
