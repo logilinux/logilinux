@@ -37,10 +37,7 @@ extern "C" {
 std::atomic<bool> running(true);
 std::atomic<bool> paused(false);
 
-void signalHandler(int signal) { 
-  /*unused*/ (void)signal; 
-  running = false; 
-}
+void signalHandler(int signal) { running = false; }
 
 // Encode RGB frame to JPEG
 std::vector<uint8_t> encodeJpeg(const uint8_t* rgb_data, int width, int height, int quality = 80) {

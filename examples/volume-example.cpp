@@ -13,10 +13,7 @@
 std::atomic<bool> running(true);
 std::atomic<bool> is_muted(false);
 
-void signalHandler(int signal) {
-  /*unused*/ (void)signal; 
-  running = false;
-}
+void signalHandler(int signal) { running = false; }
 
 std::string exec(const char *cmd) {
   std::string full_cmd = cmd;
@@ -32,7 +29,7 @@ std::string exec(const char *cmd) {
 
   std::array<char, 128> buffer;
   std::string result;
-  std::unique_ptr<FILE, int (*)(FILE*)> pipe(popen(full_cmd.c_str(), "r"),
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(full_cmd.c_str(), "r"),
                                                 pclose);
   if (!pipe) {
     return "";

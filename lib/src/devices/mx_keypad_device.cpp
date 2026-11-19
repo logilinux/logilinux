@@ -269,7 +269,7 @@ struct MXKeypadDevice::Impl {
       if (fd >= 0) {
         struct hidraw_devinfo info;
         if (ioctl(fd, HIDIOCGRAWINFO, &info) >= 0) {
-          if (info.vendor == static_cast<int16_t>(0x046d) && info.product == static_cast<int16_t>(0xc354)) {
+          if (info.vendor == 0x046d && info.product == 0xc354) {
             close(fd);
             return hidraw;
           }
@@ -358,7 +358,7 @@ void MXKeypadDevice::startMonitoring() {
         continue; // No data available
       }
 
-      const ssize_t bytes_read = read(fd, report.data(), report.size());
+      int bytes_read = read(fd, report.data(), report.size());
 
       // P1/P2 navigation button detection - CHECK THIS FIRST
       // Format: 11 ff 0b 00 01 a1/a2 (press) or 11 ff 0b 00 00 00 (release)
@@ -417,7 +417,7 @@ void MXKeypadDevice::startMonitoring() {
           // Collect all currently pressed buttons from this report
           std::set<uint8_t> current_pressed;
 
-          for (ssize_t i = 6; i < bytes_read; i++) {
+          for (size_t i = 6; i < bytes_read; i++) {
             uint8_t button_code_raw = report[i];
             if (button_code_raw == 0)
               break; // End of button list
@@ -498,7 +498,6 @@ void MXKeypadDevice::stopMonitoring() {
 bool MXKeypadDevice::isMonitoring() const { return impl_->monitoring; }
 
 bool MXKeypadDevice::grabExclusive(bool grab) {
-  /*unused*/ (void)grab;
   // Not applicable for hidraw devices
   return false;
 }

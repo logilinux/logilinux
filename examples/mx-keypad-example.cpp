@@ -16,10 +16,7 @@
 
 std::atomic<bool> running(true);
 
-void signalHandler(int signal) { 
-  /*unused*/ (void)signal; 
-  running = false; 
-}
+void signalHandler(int signal) { running = false; }
 
 std::vector<uint8_t> generateColorJPEG(uint8_t r, uint8_t g, uint8_t b) {
   char ppmname[256];
@@ -41,7 +38,7 @@ std::vector<uint8_t> generateColorJPEG(uint8_t r, uint8_t g, uint8_t b) {
 
   fclose(ppm);
 
-  char cmd[544];
+  char cmd[512];
   snprintf(cmd, sizeof(cmd), "convert %s -quality 85 %s 2>/dev/null", ppmname,
            jpgname);
 
