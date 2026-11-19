@@ -12,7 +12,10 @@
 
 std::atomic<bool> running(true);
 
-void signalHandler(int signal) { running = false; }
+void signalHandler(int signal) { 
+  /*unused*/ (void)signal; 
+  running = false; 
+}
 
 void printUsage(const char* prog) {
   std::cerr << "Usage: " << prog << " [options] <gif_file.gif>" << std::endl;
